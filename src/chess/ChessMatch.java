@@ -8,6 +8,7 @@ import chess.pieces.Rook;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.IntStream;
 
 public class ChessMatch {
 
@@ -44,14 +45,15 @@ public class ChessMatch {
     }
 
     public ChessPiece[][] getPieces() {
-        ChessPiece[][] match = new ChessPiece[board.getRows()][board.getColumns()];
-
-        for (int i = 0; i < board.getRows(); i++) {
-            for (int j = 0; j < board.getColumns(); j++) {
-                match[i][j] = (ChessPiece) board.piece(i, j);
-            }
-        }
-        return match;
+        ChessPiece[][] pieces = new ChessPiece[board.getRows()][board.getColumns()];
+        
+        IntStream.range(0, board.getRows()).forEach(i -> {
+            IntStream.range(0, board.getColumns()).forEach(j -> {
+                pieces[i][j] = (ChessPiece) board.piece(i, j);
+            });
+        });
+        
+        return pieces;
     }
 
     public boolean[][] possibleMoves(ChessPosition sourcePosition) {
@@ -160,15 +162,29 @@ public class ChessMatch {
 
 
     private boolean testCheck(Color color) {
-        Position kingPosition = king(color).getChessPosition().toPosition();
-        List<Piece> opponentPieces = pieceOnTheBoard.stream().filter(x -> ((ChessPiece) x).getColor() == opponent(color)).toList();
-        for (Piece p : opponentPieces) {
-            boolean[][] mat = p.possibleMoves();
-            if (mat[kingPosition.getRow()][kingPosition.getColumn()]) {
-                return true;
-            }
-        }
-        return false;
+        Position kingPosition = getKingPosition(color);
+        List<Piece> opponentPieces = getOpponentPieces(color);
+        return isKingThreatenedByAnyPiece(kingPosition, opponentPieces);
+    }
+
+    private Position getKingPosition(Color color) {
+        return king(color).getChessPosition().toPosition();
+    }
+
+    private List<Piece> getOpponentPieces(Color color) {
+        return pieceOnTheBoard.stream()
+                .filter(piece -> ((ChessPiece) piece).getColor() == opponent(color))
+                .toList();
+    }
+
+    private boolean isKingThreatenedByAnyPiece(Position kingPosition, List<Piece> opponentPieces) {
+        return opponentPieces.stream()
+                .anyMatch(piece -> canPieceAttackPosition(piece, kingPosition));
+    }
+
+    private boolean canPieceAttackPosition(Piece piece, Position position) {
+        boolean[][] possibleMoves = piece.possibleMoves();
+        return possibleMoves[position.getRow()][position.getColumn()];
     }
 
     private boolean testCheckMate(Color color) {
