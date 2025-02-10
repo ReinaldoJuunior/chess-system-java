@@ -70,7 +70,7 @@ public class ChessMatch {
 
         if (testCheck(currentPlayer)) {
             undoMove(source, target, capturedPiece);
-            throw new ChessException("You can't put yourself in check");
+            throw new ChessException("Invalid move: You can't put yourself in check");
         }
         check = testCheck(opponent(currentPlayer));
 
@@ -108,20 +108,33 @@ public class ChessMatch {
     }
 
     private void validateSourcePosition(Position position) {
+        validatePieceExists(position);
+        validatePieceOwnership(position);
+        validatePieceHasMoves(position);
+    }
+
+    private void validatePieceExists(Position position) {
         if (!board.thereIsAPiece(position)) {
-            throw new ChessException("There is no piece on source position");
+            throw new ChessException("Invalid move: No piece found at the selected position");
         }
-        if (currentPlayer != ((ChessPiece) board.piece(position)).getColor()) {
-            throw new ChessException("The chosen piece is not yours");
+    }
+
+    private void validatePieceOwnership(Position position) {
+        ChessPiece piece = (ChessPiece) board.piece(position);
+        if (currentPlayer != piece.getColor()) {
+            throw new ChessException("Invalid move: You can only move your own pieces");
         }
+    }
+
+    private void validatePieceHasMoves(Position position) {
         if (!board.piece(position).isThereAnyPossibleMove()) {
-            throw new ChessException("There is no possible moves for the chosen piece.");
+            throw new ChessException("Invalid move: Selected piece has no available moves");
         }
     }
 
     private void validateTargetPosition(Position source, Position target) {
         if (!board.piece(source).possibleMove(target)) {
-            throw new ChessException("The chosen piece can't move to target position");
+            throw new ChessException("Invalid move: The chosen piece can't move to the target position");
         }
     }
 
@@ -142,8 +155,9 @@ public class ChessMatch {
                 return (ChessPiece) p;
             }
         }
-        throw new IllegalStateException("There is no " + color + " king on the board");
+        throw new IllegalStateException("Invalid move: No " + color + " king found on the board");
     }
+
 
     private boolean testCheck(Color color) {
         Position kingPosition = king(color).getChessPosition().toPosition();
@@ -161,25 +175,37 @@ public class ChessMatch {
         if (!testCheck(color)) {
             return false;
         }
-        List<Piece> list = pieceOnTheBoard.stream().filter(x -> ((ChessPiece) x).getColor() == color).toList();
-        for (Piece p : list) {
-            boolean[][] mat = p.possibleMoves();
-            for (int i = 0; i < board.getRows(); i++) {
-                for (int j = 0; j < board.getColumns(); j++) {
-                    if (mat[i][j]) {
-                        Position source = ((ChessPiece) p).getChessPosition().toPosition();
-                        Position target = new Position(i, j);
-                        Piece capturedPiece = makeMove(source, target);
-                        boolean testCheck = testCheck(color);
-                        undoMove(source, target, capturedPiece);
-                        if (!testCheck) {
-                            return false;
-                        }
-                    }
+        
+        List<Piece> allPiecesOfColor = getAllPiecesOfColor(color);
+        return allPiecesOfColor.stream()
+                .noneMatch(piece -> canMoveToAvoidCheck(piece, color));
+    }
+
+    private List<Piece> getAllPiecesOfColor(Color color) {
+        return pieceOnTheBoard.stream()
+                .filter(piece -> ((ChessPiece) piece).getColor() == color)
+                .toList();
+    }
+
+    private boolean canMoveToAvoidCheck(Piece piece, Color color) {
+        boolean[][] possibleMoves = piece.possibleMoves();
+        Position source = ((ChessPiece) piece).getChessPosition().toPosition();
+        
+        for (int i = 0; i < board.getRows(); i++) {
+            for (int j = 0; j < board.getColumns(); j++) {
+                if (possibleMoves[i][j] && canMoveEscapeCheck(source, new Position(i, j), color)) {
+                    return true;
                 }
             }
         }
-        return true;
+        return false;
+    }
+
+    private boolean canMoveEscapeCheck(Position source, Position target, Color color) {
+        Piece capturedPiece = makeMove(source, target);
+        boolean isStillInCheck = testCheck(color);
+        undoMove(source, target, capturedPiece);
+        return !isStillInCheck;
     }
 
     private void placeNewPiece(char column, int row, ChessPiece piece) {
