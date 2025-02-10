@@ -10,6 +10,7 @@ import java.util.InputMismatchException;
 import java.util.List;
 import java.util.Scanner;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class UI {
 
@@ -52,60 +53,102 @@ public class UI {
     }
 
     public static void printBoard(ChessPiece[][] pieces) {
-
-        for (int i = 0; i < pieces.length; i++) {
-            System.out.print((8 - i) + " ");
-            for (int j = 0; j < pieces.length; j++) {
-                printPiece(pieces[i][j], false);
-            }
-            System.out.println();
-        }
-        System.out.println("  a b c d e f g h");
+        printBoardRows(pieces, new boolean[pieces.length][pieces.length]);
+        printColumnLabels();
     }
 
     public static void printBoard(ChessPiece[][] pieces, boolean[][] possibleMoves) {
+        printBoardRows(pieces, possibleMoves);
+        printColumnLabels();
+    }
 
-        for (int i = 0; i < pieces.length; i++) {
-            System.out.print((8 - i) + " ");
-            for (int j = 0; j < pieces.length; j++) {
-                printPiece(pieces[i][j], possibleMoves[i][j]);
-            }
-            System.out.println();
-        }
+    private static void printBoardRows(ChessPiece[][] pieces, boolean[][] possibleMoves) {
+        IntStream.range(0, pieces.length)
+                .forEach(row -> {
+                    printRowNumber(row);
+                    printRowPieces(pieces[row], possibleMoves[row]);
+                    System.out.println();
+                });
+    }
+
+    private static void printRowNumber(int row) {
+        System.out.print((8 - row) + " ");
+    }
+
+    private static void printRowPieces(ChessPiece[] rowPieces, boolean[] rowMoves) {
+        IntStream.range(0, rowPieces.length)
+                .forEach(col -> printPiece(rowPieces[col], rowMoves[col]));
+    }
+
+    private static void printColumnLabels() {
         System.out.println("  a b c d e f g h");
     }
 
-    public static void printMatch(ChessMatch chessMatch, List<ChessPiece> captured){
+    public static void printMatch(ChessMatch chessMatch, List<ChessPiece> captured) {
+        printGameBoard(chessMatch);
+        printCapturedPiecesSection(captured);
+        printGameStatus(chessMatch);
+    }
+
+    private static void printGameBoard(ChessMatch chessMatch) {
         printBoard(chessMatch.getPieces());
         System.out.println();
+    }
+
+    private static void printCapturedPiecesSection(List<ChessPiece> captured) {
         printCapturedPieces(captured);
         System.out.println();
-        System.out.println("Turn : " + chessMatch.getTurn());
-        if(!chessMatch.getCheckMate()){
-            System.out.println("Waiting player: " + chessMatch.getCurrentPlayer());
-            if(chessMatch.getCheck()){
-                System.out.println("CHECK!");
-            }
-        }else{
-            System.out.println("CHECKMATE!");
-            System.out.println("Winner: " + chessMatch.getCurrentPlayer());
+    }
+
+    private static void printGameStatus(ChessMatch chessMatch) {
+        System.out.println("Turn: " + chessMatch.getTurn());
+        
+        if (chessMatch.getCheckMate()) {
+            printCheckMateStatus(chessMatch);
+        } else {
+            printOngoingGameStatus(chessMatch);
+        }
+    }
+
+    private static void printCheckMateStatus(ChessMatch chessMatch) {
+        System.out.println("CHECKMATE!");
+        System.out.println("Winner: " + chessMatch.getCurrentPlayer());
+    }
+
+    private static void printOngoingGameStatus(ChessMatch chessMatch) {
+        System.out.println("Waiting player: " + chessMatch.getCurrentPlayer());
+        if (chessMatch.getCheck()) {
+            System.out.println("CHECK!");
         }
     }
 
     private static void printPiece(ChessPiece piece, boolean background) {
+        applyBackgroundIfNeeded(background);
+        printPieceSymbol(piece);
+        System.out.print(" ");
+    }
+
+    private static void applyBackgroundIfNeeded(boolean background) {
         if (background) {
             System.out.print(ANSI_BLUE_BACKGROUND);
         }
+    }
+
+    private static void printPieceSymbol(ChessPiece piece) {
         if (piece == null) {
-            System.out.print("-" + ANSI_RESET);
+            printEmptySquare();
         } else {
-            if (piece.getColor() == Color.WHITE) {
-                System.out.print(ANSI_WHITE + piece + ANSI_RESET);
-            } else {
-                System.out.print(ANSI_YELLOW + piece + ANSI_RESET);
-            }
+            printColoredPiece(piece);
         }
-        System.out.print(" ");
+    }
+
+    private static void printEmptySquare() {
+        System.out.print("-" + ANSI_RESET);
+    }
+
+    private static void printColoredPiece(ChessPiece piece) {
+        String pieceColor = (piece.getColor() == Color.WHITE) ? ANSI_WHITE : ANSI_YELLOW;
+        System.out.print(pieceColor + piece + ANSI_RESET);
     }
 
     private static void printCapturedPieces(List<ChessPiece> captured){

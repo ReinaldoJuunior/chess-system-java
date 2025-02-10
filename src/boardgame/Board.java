@@ -48,17 +48,26 @@ public class Board {
     }
 
     public Piece removePiece(Position position) {
+        validatePositionExists(position);
+        
+        Piece pieceToRemove = piece(position);
+        if (pieceToRemove == null) {
+            return null;
+        }
+        
+        clearPosition(position, pieceToRemove);
+        return pieceToRemove;
+    }
+    
+    private void validatePositionExists(Position position) {
         if (!positionExists(position)) {
             throw new BoardException("Position not on the board");
         }
-        if (piece(position) == null) {
-            return null;
-        }
-        Piece aux = piece(position);
-        aux.position = null;
+    }
+    
+    private void clearPosition(Position position, Piece piece) {
+        piece.position = null;
         pieces[position.getRow()][position.getColumn()] = null;
-
-        return aux;
     }
 
     private boolean positionExists(int row, int column) {
